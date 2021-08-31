@@ -182,6 +182,20 @@ function update_query_string(uri: string|undefined, key: string, value: string):
 	return a.href;
 }
 
+function vh(v) {
+    var h = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+    return (v * h) / 100;
+  }
+  
+function vw(v) {
+    var w = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+    return (v * w) / 100;
+}
+
+function vmin(v) {
+    return Math.min(vh(v), vw(v));
+}
+
 var createScene = function() {
     function factors(number) {
         return Array.from(Array(number + 1), function(_, i) { return i }).filter(function(i) { return number % i === 0 });
@@ -362,6 +376,7 @@ var createScene = function() {
 
             const DISTANCE = 16;
             const TOTAL = Math.floor((TILE_LENGTH) / (DISTANCE/2));
+            const SCREEN_SIZE_SCALE = vmin(5);
             for(var i = 0; i < TOTAL; i++) {
                 if(Math.random() < 0.2) {
                     let generateRows = [ Math.random() > 0.33, Math.random() > 0.33, Math.random() > 0.33 ];
@@ -390,7 +405,7 @@ var createScene = function() {
                             
 
                             var label = new GUI.TextBlock();
-                            label.fontSize = 40;
+                            label.fontSize = Math.min(40, SCREEN_SIZE_SCALE);
                             const obj = numberSets.pop();
                             const { firstNumber, correct, secondNumber } = obj;
                             label.text = `${firstNumber}${operationSymbol[operation]}${secondNumber}`;
