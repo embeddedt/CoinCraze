@@ -5,6 +5,8 @@ import * as BABYLON from 'babylonjs';
 import 'babylonjs-loaders';
 import * as GUI from 'babylonjs-gui';
 import Hammer from 'hammerjs';
+import Barrel from './Barrel';
+import Entity, { EntityNode } from './Entity';
 
 var canvas = document.getElementById("renderCanvas") as HTMLCanvasElement; // Get the canvas element
 var engine = new BABYLON.Engine(canvas, true); // Generate the BABYLON 3D engine
@@ -16,8 +18,6 @@ var numBananas = 0;
 
 let GOAL_BANANAS = 100;
 
-let TILE_LENGTH;
-
 let carSpeed = 0.005;
 let desiredX = 0;
 
@@ -27,7 +27,14 @@ let gameStart = Date.now();
 
 let endDialogVisible = false;
 let forceStopCar = false;
-let forceMathObj: NumberSet = null;
+
+interface BarrelMathObject {
+    number: number;
+}
+
+let incorrectBarrelMathObj: BarrelMathObject = null;
+
+let currentCarQuestion: any[] = null;
 
 const keys: { [k: string]: boolean; } = { };
 
@@ -71,7 +78,7 @@ window.addEventListener("keyup", (ev) => {
 function getRandomIntInclusive(min: number, max: number): number {
     min = Math.ceil(min);
     max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min + 1)) + min; //The maximum is inclusive and the minimum is inclusive 
+    return Math.floor(Math.random() * (max - min + 1)) + min; //The maximum is inclusive and the minimum is inclusive
 }
 
 /**
@@ -89,33 +96,29 @@ function shuffle<T>(a: Array<T>): Array<T> {
     return a;
 }
 
-type NumberSet = { firstNumber: number; secondNumber: number; correct: boolean; result: number; };
+var maxLeftNumber, maxRightNumber, operation;
 
-var scenePromises = [];
-var totalNumber, operation;
+const operationSymbol = { add: "&plus;", subtract: "&minus;", multiply: "&times;", divide: "&div;"};
 
-const operationSymbol = { add: "+", subtract: "-", multiply: "*", divide: "/"};
 /******* Add the create scene function ******/
 var initGame = function () {
     var bananaGoal = parseInt(getParameterByName("bananaGoal"));
     var timeToPlay = parseInt(getParameterByName("timeToPlay"));
 
-    Array.from(document.querySelectorAll(".number-to-add")).forEach(e => e.textContent = totalNumber.toString());
     Array.from(document.querySelectorAll(".operation-name")).forEach(e => e.textContent = operation.toUpperCase());
     if(!isNaN(bananaGoal))
         GOAL_BANANAS = bananaGoal;
-    
+
     if(!isNaN(timeToPlay))
         gameTotalTime = timeToPlay;
 
     Array.from(document.querySelectorAll(".num-bananas")).forEach(e => e.textContent = GOAL_BANANAS.toString());
-    TILE_LENGTH = Math.ceil(10000 * (GOAL_BANANAS / 100));
 }
 
 /**
  * Add or update a query string parameter. If no URI is given, we use the current
  * window.location.href value for the URI.
- * 
+ *
  * Based on the DOM URL parser described here:
  * http://james.padolsey.com/javascript/parsing-urls-with-the-dom/
  *
@@ -130,7 +133,7 @@ function update_query_string(uri: string|undefined, key: string, value: string):
 	if ( ! uri ) { uri = window.location.href; }
 
 	// Create a dummy element to parse the URI with
-	var a = document.createElement( 'a' ), 
+	var a = document.createElement( 'a' ),
 
 		// match the key, optional square brackets, an equals sign or end of string, the optional value
 		reg_ex = new RegExp( key + '((?:\\[[^\\]]*\\])?)(=|$)(.*)' ),
@@ -140,7 +143,7 @@ function update_query_string(uri: string|undefined, key: string, value: string):
 		qs_len,
 		key_found = false;
 
-	// Use the JS API to parse the URI 
+	// Use the JS API to parse the URI
 	a.href = uri;
 
 	// If the URI doesn't have a query string, add it and return
@@ -153,7 +156,7 @@ function update_query_string(uri: string|undefined, key: string, value: string):
 
 	// Split the query string by ampersands
 	qs = a.search.replace( /^\?/, '' ).split( /&(?:amp;)?/ );
-	qs_len = qs.length; 
+	qs_len = qs.length;
 
 	// Loop through each query string part
 	while ( qs_len > 0 ) {
@@ -171,7 +174,7 @@ function update_query_string(uri: string|undefined, key: string, value: string):
 
 			key_found = true;
 		}
-	}   
+	}
 
 	// If we haven't replaced any occurrences above, add the new parameter and value
 	if ( ! key_found ) { qs.push( key + '=' + value ); }
@@ -186,7 +189,7 @@ function vh(v) {
     var h = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
     return (v * h) / 100;
   }
-  
+
 function vw(v) {
     var w = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
     return (v * w) / 100;
@@ -196,72 +199,103 @@ function vmin(v) {
     return Math.min(vh(v), vw(v));
 }
 
-var createScene = function() {
-    function factors(number) {
-        return Array.from(Array(number + 1), function(_, i) { return i }).filter(function(i) { return number % i === 0 });
-    }
-    function generateSet(correct: boolean): NumberSet {
-        var trueNumber = totalNumber;
-        var currentCorrectAnswer;
-        if(correct)
-            currentCorrectAnswer = trueNumber;
-        else
-            currentCorrectAnswer = trueNumber + getRandomIntInclusive(1, 2);
-        if(correct)
-            
-        var firstFactor, secondFactor, symbol;
-        
-        if(operation != null)
-            operation = operation.trim();
-        
-        if(operation == "add") {
-            symbol = "&plus;";
-            firstFactor = getRandomIntInclusive(1, currentCorrectAnswer - 1);
-            secondFactor = currentCorrectAnswer - firstFactor;
-        } else if(operation == "subtract") {
-            symbol = "&minus;";
-            firstFactor = getRandomIntInclusive(currentCorrectAnswer + 1, currentCorrectAnswer + 9);
-            secondFactor = firstFactor - currentCorrectAnswer;
-        } else if(operation == "multiply") {
-            symbol = "&times;";
-            var fc = factors(currentCorrectAnswer);
-            var firstIndex = getRandomIntInclusive(0, (fc.length - 1) / 2);
-            var secondIndex = fc.length - 1 - firstIndex;
-            firstFactor = fc[firstIndex];
-            secondFactor = fc[secondIndex];
-            if(Math.random() < 0.5) {
-                var tmp = firstFactor;
-                firstFactor = secondFactor;
-                secondFactor = tmp;
-            }
-        } else if(operation == "divide") {
-            var divisor = getRandomIntInclusive(2, 6);
-            firstFactor = currentCorrectAnswer * divisor;
-            secondFactor = divisor;
-            symbol = "&divide;";
-        } else
-            window.alert("Unknown ?operation");
-        /*
-        var ourTotalNumber = correct ? totalNumber : (totalNumber + getRandomIntInclusive(1, 2));
-        var firstNumber = getRandomIntInclusive(0, ourTotalNumber);
-        var secondNumber = ourTotalNumber - firstNumber;
-        
-        if(Math.random() < 0.5) {
-            var tmp = firstNumber;
-            firstNumber = secondNumber;
-            secondNumber = tmp;
-        }
-        */
-        const obj = { firstNumber: firstFactor, correct, result: currentCorrectAnswer, originalNumber: currentCorrectAnswer, otherNumber: trueNumber, secondNumber: secondFactor };
-
-        return obj;
-    }
+var createScene = async function() {
 
 
     // Create the scene space
     var scene = new BABYLON.Scene(engine);
 
-    var barrels: any[] = [];
+    var barrels: Entity[] = [];
+    const SCREEN_SIZE_SCALE = vmin(5);
+    const DISTANCE = 16;
+
+    function clearCarQuestion() {
+        currentCarQuestion = null;
+        let display = document.getElementById("current-car-question");
+        display.textContent = "";
+    }
+
+    function generateCarQuestion() {
+        let leftNum = getRandomIntInclusive(1, maxLeftNumber);
+        let rightNum = getRandomIntInclusive(1, maxRightNumber);
+
+        if(operation != null)
+            operation = operation.trim();
+
+        let answer;
+
+        if(operation == "add") {
+            answer = leftNum + rightNum;
+        } else if(operation == "subtract") {
+            answer = leftNum - rightNum;
+        } else if(operation == "multiply") {
+            answer = leftNum * rightNum;
+        } else
+            throw new Error("unexpected operation");
+
+        currentCarQuestion = [ leftNum, operationSymbol[operation], rightNum, answer, [] ];
+        let display = document.getElementById("current-car-question");
+        display.innerHTML = `${currentCarQuestion[0]} ${currentCarQuestion[1]} ${currentCarQuestion[2]} = ?`;
+    }
+
+    function tickBarrelSpawning(barrelTemplate) {
+        if(currentCarQuestion == null)
+            return;
+        /* If there are less than 5 barrels in the scene, spawn more */
+        let attempts = 0;
+        while(barrels.length < 5) {
+            attempts++;
+            if(attempts >= 5)
+                break;
+            /* summon a barrel */
+            var secondBarrel = barrelTemplate.clone("newBarrel", barrelTemplate.parent);
+            secondBarrel.position.x = getRandomIntInclusive(-1, 1) * 2;
+            secondBarrel.position.y = 0.25;
+            secondBarrel.renderingGroupId = 5;
+            secondBarrel.position.z = monkeyCar.position.z + 8 + (getRandomIntInclusive(2, 5) * DISTANCE);
+            secondBarrel.checkCollisions = false;
+            var isValid = true;
+            for(var i = 0; i < barrels.length; i++) {
+                let distance = barrels[i].obj.position.subtract(secondBarrel.position).lengthSquared();
+                if(distance < 500) {
+                    isValid = false;
+                    break;
+                }
+            }
+            if(!isValid) {
+                secondBarrel.dispose();
+                continue;
+            }
+
+
+            var label = new GUI.TextBlock();
+            label.fontSize = Math.min(40, SCREEN_SIZE_SCALE);
+            if(currentCarQuestion[4].length == 0) {
+                for(var i = -10; i <= 10; i++) {
+                    currentCarQuestion[4].push(currentCarQuestion[3] + i);
+                }
+                shuffle(currentCarQuestion[4]);
+            }
+            const num = currentCarQuestion[4].pop();
+            const obj = { number: num }; //numberSets.pop();
+            label.text = `${num}`;
+            label.zIndex = 5; //TOTAL - i;
+            label.color = "White";
+            advancedTexture.addControl(label);
+            label.linkOffsetY = -50;
+            label.linkWithMesh(secondBarrel);
+
+            label.isVisible = false;
+            let entity = new Barrel(secondBarrel, label, monkeyCar);
+            (secondBarrel as EntityNode<BABYLON.AbstractMesh, Barrel>).entity = entity;
+            barrels.push(entity);
+            //barrels.push({ secondBarrel, label });
+            (secondBarrel as any).mathObj = obj;
+            secondBarrel.freezeWorldMatrix();
+        }
+        /* Check the current position of the car */
+    }
+
 
     // Add lights to the scene
     var light1 = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(60, 60, 0), scene);
@@ -269,39 +303,38 @@ var createScene = function() {
     // Add and manipulate meshes in the scene
     //monkeyCar = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter:1}, scene);
 
-    var cube = BABYLON.MeshBuilder.CreateBox("test", { width: 6, height: 0.5, depth: 2*TILE_LENGTH*2 }, scene);
-    cube.position = new BABYLON.Vector3(0, 0, TILE_LENGTH);
+    var cube = BABYLON.MeshBuilder.CreateBox("test", { width: 12, height: 0.5, depth: 350 }, scene);
+    cube.position = new BABYLON.Vector3(0, 0, 0);
     cube.isPickable = false;
 
     var roadMaterial = new BABYLON.StandardMaterial("myMaterial", scene);
     var grassMaterial = new BABYLON.StandardMaterial("grassMaterial", scene);
-    
+
     let roadTexture = new BABYLON.Texture("./road.jpg", scene);
 
     roadMaterial.diffuseTexture = roadTexture;
     roadMaterial.zOffset = -5.0;
     roadTexture.vScale = 3.0;
-    roadTexture.uScale = TILE_LENGTH;
+    roadTexture.uScale = 25.0;
     roadTexture.vOffset = 0.5;
     cube.material = roadMaterial;
     cube.renderingGroupId = 1;
 
     let grassTexture = new BABYLON.Texture("./textures/grass.jpg", scene);
     grassMaterial.diffuseTexture = grassTexture;
-    grassTexture.uScale = TILE_LENGTH;
-    grassTexture.vScale = 6.0;
+    grassTexture.uScale = 25.0;
+    grassTexture.vScale = 60.0;
 
-    var grassBox = BABYLON.MeshBuilder.CreateBox("grassBox", { width: 36, height: 0.5, depth: 2*TILE_LENGTH*2 }, scene);
-    grassBox.position = new BABYLON.Vector3(0, -0.01, TILE_LENGTH);
+    let grassDepth = 400;
+    var grassBox = BABYLON.MeshBuilder.CreateBox("grassBox", { width: 360, height: 0.5, depth: 100 }, scene);
+    grassBox.position = new BABYLON.Vector3(0, -0.01, 0);
     grassBox.isPickable = false;
     grassBox.material = grassMaterial;
     grassBox.renderingGroupId = 1;
     var engineSound = null;
 
-    roadMaterial.freeze();
-    grassMaterial.freeze();
 
-    scenePromises.push(new Promise<void>(resolve => {
+    await new Promise<void>(resolve => {
         BABYLON.SceneLoader.ImportMesh(null, "./", "Crysler_new_yorker.glb", scene, function (meshes) {
             monkeyCar = meshes[0];
             engineSound = new BABYLON.Sound("engine", "sounds/engineSound.wav", scene, null, {
@@ -320,7 +353,12 @@ var createScene = function() {
             });
             resolve();
         });
-    }));
+    });
+
+    grassBox.parent = monkeyCar;
+    cube.parent = monkeyCar;
+    cube.rotate(new BABYLON.Vector3(0, 1, 0), Math.PI / 2);
+    //cube.scaling = new BABYLON.Vector3(2, 1, 2);
 
     scene.collisionsEnabled = true;
     scene.clearColor = new BABYLON.Color4(0.529, 0.808, 0.922);
@@ -342,6 +380,11 @@ var createScene = function() {
 
     skybox.convertToUnIndexedMesh();
 
+    scene.fogMode = BABYLON.Scene.FOGMODE_LINEAR;
+    scene.fogStart = 50;
+    scene.fogEnd = 100;
+    scene.fogColor = BABYLON.Color3.FromHexString("#8d97ba");
+
     var advancedTexture = GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
     var barrelMaterial = new BABYLON.StandardMaterial("myMaterial", scene);
     barrelMaterial.diffuseTexture = new BABYLON.Texture("./barrel.jpg", scene);
@@ -354,105 +397,46 @@ var createScene = function() {
     scene.autoClear = false; // Color buffer
     scene.autoClearDepthAndStencil = false; // Depth and stencil, obviously
 
-    scenePromises.push(new Promise<void>(resolve => {
-        BABYLON.SceneLoader.ImportMesh(null, "./", "barrel.glb", scene, function (meshes) {
-            meshes.forEach(mesh => {
-                mesh.renderingGroupId = 1;
-            });
-            
-            var barrel = meshes[0];
-            barrel.scaling.setAll(0.01);
-            barrel.position.y = 0.25;
-            barrel.position.z = 8;
-            barrel.name = "newBarrel";
-            (barrel as any).correct = false;
-            barrel.checkCollisions = false;
-            barrel.renderingGroupId = 1;
-            meshes[1].checkCollisions = false;
-            meshes[2].isPickable = false;
-            meshes[2].checkCollisions = false;
-            meshes[1].material = barrelMaterial;
-            meshes[2].material = metalMaterial;
-
-            const DISTANCE = 16;
-            const TOTAL = Math.floor((TILE_LENGTH) / (DISTANCE/2));
-            const SCREEN_SIZE_SCALE = vmin(5);
-            for(var i = 0; i < TOTAL; i++) {
-                if(Math.random() < 0.2) {
-                    let generateRows = [ Math.random() > 0.33, Math.random() > 0.33, Math.random() > 0.33 ];
-                    let numToGenerate = generateRows.filter(v => v).length;
-                    let numberSets: NumberSet[] = [];
-                    if(numToGenerate == 3) {
-                        /* One of them must be correct */
-                        numberSets.push(generateSet(true));
-                        numberSets.push(generateSet(false));
-                        numberSets.push(generateSet(false));
-                    } else {
-                        /* We can have both be wrong */
-                        for(var j = 0; j < numToGenerate; j++) {
-                            numberSets.push(generateSet((j == 0) ? (Math.random() < 0.8) : false));
-                        }
-                    }
-                    shuffle(numberSets);
-
-                    for(var xOff = -1; xOff < 2; xOff++) {
-                        if(generateRows[xOff+1]) {
-                            var secondBarrel = barrel.clone("newBarrel", barrel.parent);
-                            secondBarrel.position.x = xOff * 2;
-                            secondBarrel.renderingGroupId = 1;
-                            secondBarrel.position.z = 8 + (i * DISTANCE);
-                            secondBarrel.checkCollisions = false;
-                            
-
-                            var label = new GUI.TextBlock();
-                            label.fontSize = Math.min(40, SCREEN_SIZE_SCALE);
-                            const obj = numberSets.pop();
-                            const { firstNumber, correct, secondNumber } = obj;
-                            label.text = `${firstNumber}${operationSymbol[operation]}${secondNumber}`;
-                            label.zIndex = TOTAL - i;
-                            label.color = "White";
-                            advancedTexture.addControl(label);
-                            label.linkOffsetY = -50;
-                            label.linkWithMesh(secondBarrel);
-
-                            label.isVisible = false;
-                            barrels.push({ secondBarrel, label });
-                            (secondBarrel as any).correct = correct;
-                            (secondBarrel as any).mathObj = { ...obj, symbol: operationSymbol[operation] };
-                            secondBarrel.freezeWorldMatrix();
-                        }
-                    }
-                    
-                }
-                
-            }
-            barrel.dispose();
-            resolve();
+    //Array.from(document.querySelectorAll(".number-to-add")).forEach(e => e.textContent = totalNumber.toString());
+    let barrelModel = await new Promise<BABYLON.AbstractMesh>(resolve => BABYLON.SceneLoader.ImportMesh(null, "./", "barrel.glb", scene, function (meshes) {
+        meshes.forEach(mesh => {
+            mesh.renderingGroupId = 1;
         });
+
+        var barrel = meshes[0];
+        barrel.scaling.setAll(0.01);
+        barrel.position.y = -10; //0.25;
+        barrel.position.z = 8;
+        barrel.isVisible = false;
+        barrel.name = "newBarrel_template";
+        (barrel as any).correct = false;
+        barrel.checkCollisions = false;
+        barrel.renderingGroupId = 1;
+        meshes[1].checkCollisions = false;
+        meshes[2].isPickable = false;
+        meshes[2].checkCollisions = false;
+        meshes[1].material = barrelMaterial;
+        meshes[2].material = metalMaterial;
+        resolve(barrel);
     }));
 
     scene.registerBeforeRender(() => {
-        barrels.forEach(({ secondBarrel, label }, i) => {
-            if(monkeyCar == null)
-                return;
-            if(secondBarrel.isDisposed()) {
-                console.log("DISPOSE");
-                barrels.splice(i, 1);
-                label.dispose();
-                return;
-            }
-            const dist = Math.abs(secondBarrel.position.z - monkeyCar.position.z);
-            const VISIBLE_DISTANCE = 60;
-            const visible = secondBarrel.position.z > monkeyCar.position.z && (dist < VISIBLE_DISTANCE);
-            label.isVisible = visible;
-            if(visible) {
-                const scale = 1 - (dist / VISIBLE_DISTANCE);
-                label.scaleX = scale;
-                label.scaleY = scale;
-            }
-        });
-        
+        barrels = barrels.filter(barrel => !barrel.isRemoved);
+        barrels.forEach(barrel => barrel.renderTick());
     });
+
+    setInterval(() => {
+        tickBarrelSpawning(barrelModel);
+        barrels.forEach(barrel => barrel.tick());
+        /* Despawn any barrels more than 100 units away */
+        barrels = barrels.filter(barrel => {
+            if(BABYLON.Vector3.DistanceSquared(barrel.obj.position, monkeyCar.position) >= 10000) {
+                (barrel as Barrel).remove();
+                return false;
+            }
+            return true;
+        });
+    }, 50);
 
     // Parameters: name, position, scene
     var camera = new BABYLON.UniversalCamera("UniversalCamera", new BABYLON.Vector3(0, 0, 0), scene);
@@ -525,16 +509,15 @@ var createScene = function() {
             return;
         if(monkeyCar == null)
             return;
-        
+
         let frameDelta = scene.getEngine().getDeltaTime() / 16;
-        let moveVector = new BABYLON.Vector3();
-        
-        let tooFar = monkeyCar.position.z >= TILE_LENGTH;
+
+        let tooFar = false; //monkeyCar.position.z >= TILE_LENGTH;
         let endingGame = tooFar || numBananas >= GOAL_BANANAS;
 
         if(endingGame || forceStopCar) {
             if(forceStopCar) {
-                correctAnswer.textContent = `${forceMathObj.firstNumber} ${(forceMathObj as any).symbol} ${forceMathObj.secondNumber} = ?`;
+                correctAnswer.innerHTML = `${currentCarQuestion[0]} ${currentCarQuestion[1]} ${currentCarQuestion[2]} = ?`;
                 correctAnswer.style.display = "";
             }
             carSpeed -= (forceStopCar ? 0.006 : 0.003) * frameDelta;
@@ -543,10 +526,11 @@ var createScene = function() {
                 if(forceStopCar) {
                     forceStopCar = false;
                     setTimeout(() => {
-                        correctAnswer.textContent = `${forceMathObj.firstNumber} ${(forceMathObj as any).symbol} ${forceMathObj.secondNumber} = ${forceMathObj.result}, not ${totalNumber}`;
+                        correctAnswer.innerHTML = `${currentCarQuestion[0]} ${currentCarQuestion[1]} ${currentCarQuestion[2]} = ${currentCarQuestion[3]}, not ${incorrectBarrelMathObj.number}`;
+                        clearCarQuestion();
                         setTimeout(() => {
                             correctAnswer.style.display = "none";
-                            forceMathObj = null;
+                            incorrectBarrelMathObj = null;
                         }, 3000);
                     }, 2000);
                 } else {
@@ -555,9 +539,9 @@ var createScene = function() {
                     else if(numBananas >= GOAL_BANANAS)
                         showWinDialog();
                 }
-                
+
             }
-        } else if(forceMathObj == null) {
+        } else if(incorrectBarrelMathObj == null) {
             if(keys.ArrowUp || keys.Up) {
                 carSpeed += 0.001 * frameDelta;
                 carSpeed = Math.min(0.8, carSpeed);
@@ -566,15 +550,19 @@ var createScene = function() {
                 carSpeed = Math.max(0.03, carSpeed);
             }
         }
-        engineSound.setPlaybackRate((!forceStopCar && forceMathObj != null) ? 0 : (1 + (carSpeed / 0.17)));
-        if(!endingGame && forceMathObj == null && !forceStopCar) {
+
+        if(carSpeed > 0 && currentCarQuestion == null)
+            generateCarQuestion();
+
+        engineSound.setPlaybackRate((!forceStopCar && incorrectBarrelMathObj != null) ? 0 : (1 + (carSpeed / 0.17)));
+        if(!endingGame && currentCarQuestion != null && incorrectBarrelMathObj == null && !forceStopCar) {
             var ray = new BABYLON.Ray(monkeyCar.position.add(new BABYLON.Vector3(0, 0.5, 0)), new BABYLON.Vector3(0,0,1), 4);
 
 
             var hit = scene.pickWithRay(ray, null, true);
-    
+
             if(hit.pickedMesh != null) {
-                let barrel: BABYLON.Node = hit.pickedMesh;
+                let barrel: EntityNode<BABYLON.Node, Barrel> = hit.pickedMesh;
                 while(barrel != null) {
                     if(barrel.name == "newBarrel")
                         break;
@@ -584,53 +572,50 @@ var createScene = function() {
                     barrelBreak.setPosition((barrel as any).position);
                     barrelBreak.play();
                     let factor = Math.ceil(getRandomIntInclusive(2, 4) * (carSpeed / 0.2));
-                    if((barrel as any).correct) {
+                    if((barrel as any).mathObj.number == currentCarQuestion[3]) {
                         numBananas += factor;
                         rightSound.play();
                         console.log("RIGHT");
+                        clearCarQuestion();
                     } else {
                         console.log("WRONG");
                         wrongSound.play();
                         numBananas = Math.max(0, numBananas - factor);
                         rattling = 33;
-                        forceMathObj = (barrel as any).mathObj;
+                        incorrectBarrelMathObj = (barrel as any).mathObj;
                         forceStopCar = true;
                     }
-                    /*
-                    var bananas = document.querySelector("#bananas");
-                    
-                    while(bananas.childElementCount < numBananas) {
-                        const banana = document.createElement("img");
-                        banana.src = "banana.svg";
-                        banana.classList.add("banana");
-                        bananas.appendChild(banana);
-                    }
-                    while (bananas.childElementCount > numBananas && bananas.lastChild) {
-                        bananas.removeChild(bananas.firstChild);
-                    }
-                    */
+
                     document.querySelector(".num-banana").textContent = numBananas.toString();
-                    
-                    barrel.dispose();
+
+                    barrel.entity.remove();
                 }
-                
+
             }
         }
-        
+
         let prevX = monkeyCar.position.x;
         monkeyCar.position.z += carSpeed * frameDelta;
+        grassTexture.vOffset -= carSpeed * frameDelta / 3;
+        roadTexture.uOffset += carSpeed * frameDelta * (12/25) / 3.5;
+        cube.setAbsolutePosition(new BABYLON.Vector3(0, cube.absolutePosition.y, cube.absolutePosition.z));
         monkeyCar.position.x = prevX;
         monkeyCar.position.y = 0.25;
+
         let realDesiredX = desiredX * 2;
         if(Math.abs(monkeyCar.position.x-realDesiredX) > 0.05) {
             let desiredDelta = Math.sign(realDesiredX-monkeyCar.position.x) * 0.05 * ((carSpeed * frameDelta) / 0.1);
             let realDelta = realDesiredX-monkeyCar.position.x;
+            var prevCarX = monkeyCar.position.x;
             if(Math.abs(realDelta) < Math.abs(desiredDelta)) {
                 monkeyCar.position.x = realDesiredX;
             } else
                 monkeyCar.position.x += desiredDelta;
+            grassTexture.uOffset -= (monkeyCar.position.x - prevCarX) / 3;
             monkeyCar.position.z -= 0.001 * frameDelta;
         }
+        if(camera.name == "DebugCam")
+            return;
         camera.position = monkeyCar.position.add(cameraOff);
         camera.setTarget(monkeyCar.position);
     });
@@ -650,24 +635,24 @@ var isMuted = false;
     BABYLON.Engine.audioEngine.masterGain.gain.value = isMuted ? 0 : 1;
 };
 
-function onButtonClick(button) {
-    totalNumber = parseInt(getParameterByName("number"));
-    if(isNaN(totalNumber))
-        totalNumber = parseInt((document.querySelector(".target-number") as HTMLInputElement).value);
-    if(isNaN(totalNumber) || totalNumber <= 1) {
+function getNumber(paramName, id) {
+    var n = parseInt(getParameterByName(paramName));
+    if(isNaN(n))
+        n = parseInt((document.querySelector(id) as HTMLInputElement).value);
+    if(isNaN(n) || n <= 1) {
         window.alert("Please enter a valid number (greater than one).");
-        return;
+        throw new Error("invalid number");
     }
+    return n;
+}
+
+function onButtonClick(button) {
+    maxLeftNumber = getNumber("lnumber", "#left-number");
+    maxRightNumber = getNumber("rnumber", "#right-number");
     operation = getParameterByName("operation");
     if(operation == null)
         operation = button.textContent.toLowerCase();
-    if(operation == "subtract" && totalNumber > 9) {
-        window.alert("The maximum number you can choose for subtraction is 9.");
-        return;
-    } else if(operation == "add" && totalNumber > 18) {
-        window.alert("The maximum number you can choose for addition is 18.");
-        return;
-    }
+
     // + "&operation=add";
     (async function() {
         (document.querySelector("#start-with-preloaded") as HTMLElement).style.display = "none";
@@ -675,12 +660,12 @@ function onButtonClick(button) {
         startButtons.innerHTML = "Starting game...";
         startButtons.style.display = "";
         initGame();
-        if(document.documentElement.requestFullscreen)
-            await document.documentElement.requestFullscreen({ navigationUI: "hide" });
-        var scene = createScene(); //Call the createScene function
-        Promise.all(scenePromises).then(() => {
+        //if(document.documentElement.requestFullscreen)
+        //    await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+        var scene = await createScene(); //Call the createScene function
+        Promise.resolve().then(() => {
             engine.resize();
-            
+
             gameStart = Date.now();
             var timer = document.querySelector(".timer");
             var interval = setInterval(() => {
@@ -701,6 +686,7 @@ function onButtonClick(button) {
                     console.log("FIRST RENDER");
                     (document.querySelector("#start-dialog") as HTMLElement).style.display = "none";
                     (document.querySelector("#change-number") as HTMLElement).style.display = "";
+                    (document.querySelector("#current-car-question") as HTMLElement).style.display = "";
                     (document.querySelector(".add-to") as HTMLElement).style.display = "";
                     firstRender = false;
                 }
@@ -716,13 +702,17 @@ function onButtonClick(button) {
     })();
 }
 
-if(getParameterByName("operation") != null && getParameterByName("number") != null) {
+if(getParameterByName("operation") != null && getParameterByName("lnumber") != null && getParameterByName("rnumber") != null) {
     (document.querySelector(".start-buttons") as HTMLElement).style.display = "none";
     var preloaded = (document.querySelector("#start-with-preloaded") as HTMLElement);
     preloaded.style.display = "";
     preloaded.querySelector("button").addEventListener("click", () => onButtonClick(null));
-    (document.querySelector("#target-number-container") as HTMLElement).style.display = "none";
+    document.querySelectorAll(".target-number-container").forEach(container => (container as HTMLElement).style.display = "none");
 }
 document.querySelectorAll(".start-buttons button").forEach(button => button.addEventListener("click", function() {
-    onButtonClick(button);
+    try {
+        onButtonClick(button);
+    } catch(e) {
+
+    }
 }));
