@@ -272,8 +272,13 @@ var createScene = async function() {
             label.fontSize = Math.min(40, SCREEN_SIZE_SCALE);
             if(currentCarQuestion[4].length == 0) {
                 for(var i = -10; i <= 10; i++) {
+                    if(i == 0)
+                        continue;
                     currentCarQuestion[4].push(currentCarQuestion[3] + i);
                 }
+                shuffle(currentCarQuestion[4]);
+                currentCarQuestion[4] = currentCarQuestion[4].slice(0, 4);
+                currentCarQuestion[4].push(currentCarQuestion[3]);
                 shuffle(currentCarQuestion[4]);
             }
             const num = currentCarQuestion[4].pop();
@@ -687,7 +692,6 @@ function onButtonClick(button) {
                     (document.querySelector("#start-dialog") as HTMLElement).style.display = "none";
                     (document.querySelector("#change-number") as HTMLElement).style.display = "";
                     (document.querySelector("#current-car-question") as HTMLElement).style.display = "";
-                    (document.querySelector(".add-to") as HTMLElement).style.display = "";
                     firstRender = false;
                 }
                 if(!endDialogVisible)
