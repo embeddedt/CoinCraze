@@ -46,6 +46,7 @@ function showFailureDialog(variant) {
 
 function showWinDialog() {
     document.getElementById("win-dialog").style.display = "";
+    document.getElementById("num-coins-collected").textContent = numBananas as unknown as string;
     endDialogVisible = true;
 
 }
@@ -96,7 +97,7 @@ function shuffle<T>(a: Array<T>): Array<T> {
     return a;
 }
 
-var maxLeftNumber, maxRightNumber, operation;
+var minLeftNumber, minRightNumber, maxLeftNumber, maxRightNumber, operation;
 
 const operationSymbol = { add: "&plus;", subtract: "&minus;", multiply: "&times;", divide: "&div;"};
 
@@ -216,8 +217,8 @@ var createScene = async function() {
     }
 
     function generateCarQuestion() {
-        let leftNum = getRandomIntInclusive(1, maxLeftNumber);
-        let rightNum = getRandomIntInclusive(1, maxRightNumber);
+        let leftNum = getRandomIntInclusive(minLeftNumber, maxLeftNumber);
+        let rightNum = getRandomIntInclusive(minRightNumber, maxRightNumber);
 
         if(operation != null)
             operation = operation.trim();
@@ -518,7 +519,7 @@ var createScene = async function() {
         let frameDelta = scene.getEngine().getDeltaTime() / 16;
 
         let tooFar = false; //monkeyCar.position.z >= TILE_LENGTH;
-        let endingGame = tooFar || numBananas >= GOAL_BANANAS;
+        let endingGame = tooFar; // || numBananas >= GOAL_BANANAS;
 
         if(endingGame || forceStopCar) {
             if(forceStopCar) {
@@ -541,8 +542,7 @@ var createScene = async function() {
                 } else {
                     if(tooFar)
                         showFailureDialog("distance");
-                    else if(numBananas >= GOAL_BANANAS)
-                        showWinDialog();
+
                 }
 
             }
@@ -644,7 +644,7 @@ function getNumber(paramName, id) {
     var n = parseInt(getParameterByName(paramName));
     if(isNaN(n))
         n = parseInt((document.querySelector(id) as HTMLInputElement).value);
-    if(isNaN(n) || n <= 1) {
+    if(isNaN(n) || (n <= 1 && !paramName.startsWith("min"))) {
         window.alert("Please enter a valid number (greater than one).");
         throw new Error("invalid number");
     }
@@ -652,8 +652,10 @@ function getNumber(paramName, id) {
 }
 
 function onButtonClick(button) {
-    maxLeftNumber = getNumber("lnumber", "#left-number");
-    maxRightNumber = getNumber("rnumber", "#right-number");
+    minLeftNumber = getNumber("minleft", "#min-left-number");
+    minRightNumber = getNumber("minright", "#min-right-number");
+    maxLeftNumber = getNumber("maxleft", "#max-left-number");
+    maxRightNumber = getNumber("maxright", "#max-right-number");
     operation = getParameterByName("operation");
     if(operation == null)
         operation = button.textContent.toLowerCase();
@@ -681,7 +683,10 @@ function onButtonClick(button) {
                 var remaining = Math.max(0, Math.round(gameTotalTime - ((Date.now()-gameStart) / 1000)));
                 timer.textContent = "Time remaining: " + remaining + " seconds";
                 if(remaining <= 0) {
-                    showFailureDialog("time");
+                    if(numBananas >= GOAL_BANANAS)
+                        showWinDialog();
+                    else
+                        showFailureDialog("time");
                 }
             }, 1000);
             var firstRender = true;
@@ -706,7 +711,9 @@ function onButtonClick(button) {
     })();
 }
 
-if(getParameterByName("operation") != null && getParameterByName("lnumber") != null && getParameterByName("rnumber") != null) {
+var requiredParams = [ "operation", "minleft", "minright", "maxleft", "maxright" ];
+
+if(requiredParams.map(param => getParameterByName(param) != null).filter(isNotNull => !isNotNull).length == 0) {
     (document.querySelector(".start-buttons") as HTMLElement).style.display = "none";
     var preloaded = (document.querySelector("#start-with-preloaded") as HTMLElement);
     preloaded.style.display = "";

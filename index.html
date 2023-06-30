@@ -33,7 +33,7 @@
                         <h1>You Win!</h1>
                         <div class="dialog-image-left">
                             <img class="monkey" src="monkey_happy.svg"/>
-                            <p>You collected all the coins in time!</p>
+                            <p>You collected <span id="num-coins-collected">N</span> coins! Great work!</p>
                         </div>
                         <center><button onclick="window.location.reload(false);">Play again</button></center>
                     </div>
@@ -57,11 +57,29 @@
                         <h1>Coin Craze</h1>
                         <div class="dialog-image-left">
                             <img class="monkey" src="monkey_happy.svg"/>
-                            <p>Welcome! Can you help me collect <span class="num-bananas"></span> coins from the barrels on the road?<br/>Drive your car into the barrels that match the question which will appear in the top right.<br/>On a PC, use your arrow keys to control the car. On mobile, move your finger up and down to control the car's speed, and swipe left and right to switch lanes.<br/>Good luck!</p>
+                            <p>
+                                Welcome! Can you help me collect <span class="num-bananas"></span> coins from the barrels on the road?
+                                <br/>
+                                A question will appear on the bottom of your screen. As you drive your car forward, barrels will appear.
+                                Drive into the barrel that displays the correct answer. Make sure not to hit the other barrels!
+                                <br/>
+                                On a PC, use your arrow keys to control the car. On mobile, move your finger up and down to control the car's speed, and swipe left and right to switch lanes.
+                                <br/>
+                                Good luck! Try to collect at least 100 coins.</p>
                         </div>
                         <center id="start-with-preloaded" style="display: none;"><button>Start game</button></center>
-                        <center class="target-number-container"><input required class="target-number" id="left-number" type="number" min="2" placeholder="Enter maximum left number"/></center>
-                        <center class="target-number-container"><input required class="target-number" id="right-number" type="number" min="2" placeholder="Enter maximum right number"/></center>
+                        <center class="target-number-container">
+                            Left number between
+                            <input required class="target-number" id="min-left-number" type="number" min="1" value="1"/>
+                            and
+                            <input required class="target-number" id="max-left-number" type="number" min="2" value="12"/>
+                        </center>
+                        <center class="target-number-container">
+                            Right number between
+                            <input required class="target-number" id="min-right-number" type="number" min="1" value="1"/>
+                            and
+                            <input required class="target-number" id="max-right-number" type="number" min="2" value="12"/>
+                        </center>
                         <center class="start-buttons"><button>Add</button><button>Subtract</button><button>Multiply</button><!--<button>Divide</button>--></center>
                     </div>
                     <div class="bottom-gui-container">
