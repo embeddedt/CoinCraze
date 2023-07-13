@@ -115,6 +115,18 @@ html, body, #game-container {
 .dialog-image-left img {
     margin-right: 1rem;
 }
+
+@media screen and (max-width: 700px) {
+    .dialog-image-left {
+        flex-direction: column;
+    }
+    .dialog-image-left img {
+        margin-right: auto;
+        margin-left: auto;
+        margin-bottom: 1rem;
+    }
+}
+
 .ui-overlay {
     position: absolute;
     top: 0;
