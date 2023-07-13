@@ -729,7 +729,8 @@ if(requiredParams.map(param => getParameterByName(param) != null).filter(isNotNu
     if(getParameterByName("immediatestart") == "true") {
         onButtonClick(null);
         // make sure copied link won't have immediateStart in it
-        window.history.replaceState(null, "", window.location.href.toLowerCase().replace("&immediatestart=true", ""));
+        var newPath = window.location.origin + window.location.pathname + window.location.search.toLowerCase().replace("&immediatestart=true", "");
+        window.history.replaceState(null, "", newPath);
     }
 }
 document.querySelectorAll(".start-buttons button").forEach(button => button.addEventListener("click", function() {
