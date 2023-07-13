@@ -94,8 +94,7 @@ html, body, #game-container {
     position: absolute;
     top: 50%;
     left: 50%;
-    max-height: 100vh;
-    max-height: -webkit-fill-available;
+    max-height: 90vh;
     overflow: auto;
     transform: translate(-50%, -50%);
     background-color: white;
@@ -201,4 +200,19 @@ html, body, #game-container {
 #current-car-question {
     font-size: 48px;
     color: white;
+}
+
+.presets-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    max-width: 800px;
+    flex: 0 0 auto;
+}
+
+.presets-container li {
+    width: 10em;
+    text-align: left;
 }

@@ -217,22 +217,28 @@ var createScene = async function() {
     }
 
     function generateCarQuestion() {
-        let leftNum = getRandomIntInclusive(minLeftNumber, maxLeftNumber);
-        let rightNum = getRandomIntInclusive(minRightNumber, maxRightNumber);
+        let answer = 0, leftNum = 0, rightNum = 0;
+
+        leftNum = getRandomIntInclusive(minLeftNumber, maxLeftNumber);
+        rightNum = getRandomIntInclusive(minRightNumber, maxRightNumber);
 
         if(operation != null)
             operation = operation.trim();
 
-        let answer;
-
-        if(operation == "add") {
+        if(operation == "add" || operation == "subtract") {
             answer = leftNum + rightNum;
-        } else if(operation == "subtract") {
-            answer = leftNum - rightNum;
-        } else if(operation == "multiply") {
+        } else if(operation == "multiply" || operation == "divide") {
             answer = leftNum * rightNum;
         } else
             throw new Error("unexpected operation");
+
+        if(operation == "subtract" || operation == "divide") {
+            // rearrange equation
+            var tmp = leftNum;
+            leftNum = answer;
+            answer = rightNum;
+            rightNum = tmp;
+        }
 
         currentCarQuestion = [ leftNum, operationSymbol[operation], rightNum, answer, [] ];
         let display = document.getElementById("current-car-question");
@@ -719,6 +725,12 @@ if(requiredParams.map(param => getParameterByName(param) != null).filter(isNotNu
     preloaded.style.display = "";
     preloaded.querySelector("button").addEventListener("click", () => onButtonClick(null));
     document.querySelectorAll(".target-number-container").forEach(container => (container as HTMLElement).style.display = "none");
+    // do not wait for button press
+    if(getParameterByName("immediatestart") == "true") {
+        onButtonClick(null);
+        // make sure copied link won't have immediateStart in it
+        window.history.replaceState(null, "", window.location.href.toLowerCase().replace("&immediatestart=true", ""));
+    }
 }
 document.querySelectorAll(".start-buttons button").forEach(button => button.addEventListener("click", function() {
     try {
@@ -727,3 +739,39 @@ document.querySelectorAll(".start-buttons button").forEach(button => button.addE
 
     }
 }));
+
+var presets = document.querySelector(".presets-container");
+
+function addPreset(params) {
+    let url = "?";
+    requiredParams.forEach(param => {
+        if(typeof params[param] == 'undefined')
+            throw new Error(`missing parameter '${param}' in preset`);
+        url = `${url}${param}=${params[param]}&`;
+    });
+    url = url.substring(0, url.length - 1);
+    let anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.addEventListener("click", e => {
+        e.preventDefault();
+        window.location.href = anchor.href + "&immediatestart=true";
+        return false;
+    });
+    let titleCasedOperation = params["operation"][0].toUpperCase() + params["operation"].substring(1);
+    anchor.textContent = `${titleCasedOperation} (up to ${params["maxleft"]})`;
+    let li = document.createElement("li");
+    li.appendChild(anchor);
+    presets.appendChild(li);
+}
+
+[5, 9].forEach(presetMax => {
+    ["add", "subtract", "multiply", "divide"].forEach(operation => {
+        addPreset({
+            operation,
+            minleft: 1,
+            minright: 1,
+            maxleft: presetMax,
+            maxright: presetMax
+        });
+    });
+});

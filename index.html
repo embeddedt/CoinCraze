@@ -69,6 +69,13 @@
                         </div>
                         <center id="start-with-preloaded" style="display: none;"><button>Start game</button></center>
                         <center class="target-number-container">
+                            <h3>Choose a preset:</h3>
+                            <ul class="presets-container">
+                                <!-- filled at bottom of script.ts -->
+                            </ul>
+                            <h3>&hellip;or make a custom game:</h3>
+                        </center>
+                        <center class="target-number-container">
                             Left number between
                             <input required class="target-number" id="min-left-number" type="number" min="1" value="1"/>
                             and
@@ -80,11 +87,11 @@
                             and
                             <input required class="target-number" id="max-right-number" type="number" min="2" value="12"/>
                         </center>
-                        <center class="start-buttons"><button>Add</button><button>Subtract</button><button>Multiply</button><!--<button>Divide</button>--></center>
+                        <center class="start-buttons"><button>Add</button><button>Subtract</button><button>Multiply</button><button>Divide</button></center>
                     </div>
                     <div class="bottom-gui-container">
                         <div id="current-car-question" style="display: none">3 + 3 = ?</div>
-                        <button id="change-number" style="display: none;" onclick="window.location.reload(false);">Change number</button>
+                        <button id="change-number" style="display: none;" onclick="window.location.href = '/';">Change number</button>
                     </div>
                 </div>
             </div>
